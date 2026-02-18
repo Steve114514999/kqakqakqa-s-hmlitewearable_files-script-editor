@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>脚本编辑器 - 本地测试运行</title>
+    <style>
+        :root {
+            --bg-body: #f5f5f5;
+            --bg-container: #ffffff;
+            --bg-card: #f9f9f9;
+            --bg-input: #ffffff;
+            --bg-textarea: #f0f0f0;
+            --bg-toggle-off: #ccc;
+            --bg-toggle-on: #2196F3;
+            --bg-log: #f8f9fa;
+            --bg-log-success: #e8f5e9;
+            --bg-log-error: #ffebee;
+            --bg-log-info: #e3f2fd;
+
+            --text-primary: #333333;
+            --text-secondary: #555555;
+            --text-light: #666666;
+            --text-white: #ffffff;
+
+            --border-color: #dddddd;
+            --border-light: #eeeeee;
+
+            --shadow-main: 0 2px 10px rgba(0,0,0,0.1);
+
+            --btn-primary: #2196F3;
+            --btn-success: #4CAF50;
+            --btn-warning: #FF9800;
+            --btn-danger: #ff4444;
+            --btn-run: #00BCD4;
+            --btn-stop: #FF5722;
+
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+        }
+        
+        body {
+            padding: 20px;
+            background: var(--bg-body);
+            color: var(--text-primary);
+        }
+        
+        .editor-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--bg-container);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-main);
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        h1 {
+            color: var(--text-primary);
+        }
+
+        /* 深色模式开关 */
+        .mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .mode-toggle input { display: none; }
+        .toggle-slider {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 24px;
+            transition: 0.3s;
+        }
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            top: 3px; left: 3px;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            transition: 0.3s;
+        }
+        .mode-toggle input:checked + .toggle-slider {
+            background: #2196F3;
+        }
+        .mode-toggle input:checked + .toggle-slider::before {
+            transform: translateX(24px);
+        }
+
+        .form-group { margin-bottom: 20px; }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+        }
+        textarea { min-height: 80px; resize: vertical; }
+
+        .steps-container {
+            margin: 30px 0;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 20px;
+        }
+        .steps-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .step-item {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: var(--bg-card);
+        }
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .step-title { font-weight: 600; }
+        .step-actions button {
+            margin-left: 5px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .btn-delete { background: var(--btn-danger); color: #fff; }
+        .btn-up, .btn-down { background: #666; color: #fff; }
+
+        .param-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .param-item input { flex: 1; min-width: 120px; }
+
+        .btn-add-step,
+        .btn-generate,
+        .btn-download,
+        .btn-run,
+        .btn-stop {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-add-step,
+        .btn-generate { background: var(--btn-primary); }
+        .btn-download { background: #009688; }
+        .btn-run { background: var(--btn-run); }
+        .btn-stop { background: var(--btn-stop); display: none; }
+
+        .btn-add-param {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            background: var(--btn-success);
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-load {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            background: var(--btn-warning);
+            color: #fff;
+            cursor: pointer;
+        }
+        .btn-toggle-mode {
+            margin-top: 10px;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            background: #78909C;
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-remove-param {
+            background: var(--btn-danger);
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .actions {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .download-options {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .download-options input { width: auto; }
+
+        .json-preview { margin-top: 30px; }
+        .json-preview textarea {
+            font-family: Consolas, monospace;
+            background: var(--bg-textarea);
+            min-height: 200px;
+        }
+
+        /* 测试运行区域 */
+        .run-controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--bg-card);
+            border-radius: 6px;
+            border: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .run-buttons { display: flex; gap: 10px; }
+
+        /* 日志 */
+        .run-logs { margin-top: 30px; }
+        .logs-container {
+            background: var(--bg-log);
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+        }
+        .log-item {
+            margin-bottom: 8px;
+            padding: 6px 8px;
+            border-radius: 3px;
+            line-height: 1.4;
+        }
+        .log-item.info { background: var(--bg-log-info); color: #1565c0; }
+        .log-item.success { background: var(--bg-log-success); color: #2e7d32; }
+        .log-item.error { background: var(--bg-log-error); color: #c62828; }
+        .log-time { font-weight: 600; margin-right: 8px; }
+        .clear-logs {
+            margin-top: 10px;
+            padding: 6px 12px;
+            background: #78909C;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .friendly-form {
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(33,150,243,0.05);
+            border-radius: 6px;
+            border: 1px solid rgba(33,150,243,0.2);
+        }
+        .advanced-params-container,
+        .advanced-controls { display: none; margin-top: 10px; }
+        .custom-command-input { margin-top: 10px; display: none; }
+        
+        /* 新增链接区域样式 */
+        .links-section {
+            margin-top: 40px;
+            padding: 20px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border-light);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .links-section a {
+            color: #2196F3;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .links-section a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div class="editor-container">
+    <div class="header-top">
+        <h1>脚本编辑器 - 本地测试运行</h1>
+        <label class="mode-toggle">
+            <input type="checkbox" id="dark-mode-toggle">
+            <span class="toggle-slider"></span>
+            <span>深色模式</span>
+        </label>
+    </div>
+
+    <div class="form-group">
+        <label>脚本描述</label>
+        <input type="text" id="description" value="测试脚本">
+    </div>
+
+    <div class="steps-container">
+        <div class="steps-header">
+            <h3>执行步骤</h3>
+            <div>
+                <button class="btn-add-step" onclick="addStep()">添加步骤</button>
+                <button class="btn-load" onclick="loadSampleData()">加载示例</button>
+            </div>
+        </div>
+        <div id="steps-list"></div>
+    </div>
+
+    <!-- 纯本地测试运行 -->
+    <div class="run-controls">
+        <div>本地测试运行（仅模拟，不连接设备）</div>
+        <div class="run-buttons">
+            <button class="btn-run" id="btn-run" onclick="startTestRun()">测试运行</button>
+            <button class="btn-stop" id="btn-stop" onclick="stopTestRun()">停止</button>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn-generate" onclick="generateJSON()">生成 JSON</button>
+        <button class="btn-download" onclick="downloadJSON()">下载</button>
+        <div class="download-options">
+            <input type="checkbox" id="is-mp3" checked>
+            <label>加 .mp3 后缀</label>
+        </div>
+    </div>
+
+    <div class="json-preview">
+        <label>JSON 预览</label>
+        <textarea id="json-output"></textarea>
+    </div>
+
+    <div class="run-logs">
+        <label>运行日志</label>
+        <div class="logs-container" id="logs-container"></div>
+        <button class="clear-logs" onclick="clearLogs()">清空日志</button>
+    </div>
+
+<div style="margin-top: 30px; padding: 16px 20px; background:#f7f8fa; border-radius:10px; text-align:center; font-size:15px; line-height:1.8;">
+    <a href="https://qm.qq.com/q/leKcIv1v10" target="_blank" 
+       style="color:#1677ff; text-decoration:none; font-weight:500;">
+        👉 点击加入群聊【华为鸿蒙手表交流二群】
+    </a>
+    <br>
+    <span style="color:#666;">靠墙的钴-60 kqakqakqa 文件仓库：</span>
+    <a href="https://github.com/kqakqakqa/hmlitewearable_files" target="_blank" 
+       style="color:#1677ff; text-decoration:none; font-weight:500;">
+        GitHub
+    </a>
+</div>
+
+<script>
+let stepCounter = 0;
+let isRunning = false;
+let runTimer = null;
+let currentStep = 0;
+let scriptSteps = [];
+
+const presetCommands = [
+    { value: "", text: "请选择指令" },
+    { value: "console.log", text: "控制台输出" },
+    { value: "file.mkdir", text: "创建目录" },
+    { value: "file.writeText", text: "写入文本" },
+    { value: "file.writeArrayBuffer", text: "写入二进制" },
+    { value: "file.copy", text: "复制文件" },
+    { value: "file.move", text: "移动文件" },
+    { value: "file.delete", text: "删除文件" },
+    { value: "file.rmdir", text: "删除目录" },
+    { value: "custom", text: "自定义指令" }
+];
+
+const friendlyFormConfigs = {
+    "console.log": {
+        fields: [{ key: "message", label: "输出内容", type: "text" }],
+        getParams: v => v.message || "",
+        parseParams: p => ({ message: p })
+    },
+    "file.mkdir": {
+        fields: [
+            { key: "uri", label: "目录路径", type: "text" },
+            { key: "recursive", label: "递归创建", type: "checkbox", default: true }
+        ],
+        getParams: v => ({ uri: v.uri||"", recursive: v.recursive }),
+        parseParams: p => ({ uri: p.uri||"", recursive: p.recursive })
+    },
+    "file.writeText": {
+        fields: [
+            { key: "uri", label: "文件路径", type: "text" },
+            { key: "text", label: "内容", type: "textarea" },
+            { key: "append", label: "追加模式", type: "checkbox" }
+        ],
+        getParams: v => ({ uri: v.uri||"", text: v.text||"", append: v.append }),
+        parseParams: p => ({ uri: p.uri||"", text: p.text||"", append: p.append })
+    },
+    "file.writeArrayBuffer": {
+        fields: [
+            { key: "uri", label: "文件路径", type: "text" },
+            { key: "buffer", label: "数据", type: "text" },
+            { key: "append", label: "追加", type: "checkbox" }
+        ],
+        getParams: v => {
+            let buf = v.buffer||"[]";
+            try { buf = JSON.parse(buf); } catch {}
+            return { uri: v.uri||"", buffer: buf, append: v.append };
+        },
+        parseParams: p => ({ uri: p.uri||"", buffer: JSON.stringify(p.buffer||[]), append: p.append })
+    },
+    "file.copy": {
+        fields: [
+            { key: "srcUri", label: "源路径", type: "text" },
+            { key: "dstUri", label: "目标路径", type: "text" }
+        ],
+        getParams: v => ({ srcUri: v.srcUri||"", dstUri: v.dstUri||"" }),
+        parseParams: p => ({ srcUri: p.srcUri||"", dstUri: p.dstUri||"" })
+    },
+    "file.move": {
+        fields: [
+            { key: "srcUri", label: "源路径", type: "text" },
+            { key: "dstUri", label: "目标路径", type: "text" }
+        ],
+        getParams: v => ({ srcUri: v.srcUri||"", dstUri: v.dstUri||"" }),
+        parseParams: p => ({ srcUri: p.srcUri||"", dstUri: p.dstUri||"" })
+    },
+    "file.delete": {
+        fields: [{ key: "uri", label: "文件路径", type: "text" }],
+        getParams: v => ({ uri: v.uri||"" }),
+        parseParams: p => ({ uri: p.uri||"" })
+    },
+    "file.rmdir": {
+        fields: [
+            { key: "uri", label: "目录路径", type: "text" },
+            { key: "recursive", label: "递归删除", type: "checkbox", default: true }
+        ],
+        getParams: v => ({ uri: v.uri||"", recursive: v.recursive }),
+        parseParams: p => ({ uri: p.uri||"", recursive: p.recursive })
+    }
+};
+
+// 日志
+function addLog(type, msg) {
+    const box = document.getElementById('logs-container');
+    const time = new Date().toLocaleTimeString();
+    const div = document.createElement('div');
+    div.className = `log-item ${type}`;
+    div.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
+function clearLogs() {
+    document.getElementById('logs-container').innerHTML = '';
+    addLog('info', '日志已清空');
+}
+
+// 步骤
+function addStep(call='', params={}) {
+    const list = document.getElementById('steps-list');
+    const id = `step-${stepCounter++}`;
+    const item = document.createElement('div');
+    item.className = 'step-item';
+    item.id = id;
+
+    let select = `<select class="command-select" id="cmd-${id}" onchange="onCmdChange('${id}',this.value)">`;
+    presetCommands.forEach(c => {
+        select += `<option value="${c.value}" ${c.value==call?'selected':''}>${c.text}</option>`;
+    });
+    select += `</select>`;
+
+    const customShow = call && !presetCommands.some(x=>x.value==call) ? 'block':'none';
+    const customVal = call && !presetCommands.some(x=>x.value==call) ? call : '';
+
+    item.innerHTML = `
+    <div class="step-header">
+        <div class="step-title">步骤 ${stepCounter}</div>
+        <div class="step-actions">
+            <button class="btn-up" onclick="moveUp('${id}')">上移</button>
+            <button class="btn-down" onclick="moveDown('${id}')">下移</button>
+            <button class="btn-delete" onclick="delStep('${id}')">删除</button>
+        </div>
+    </div>
+    <div class="form-group">
+        <label>调用方法</label>
+        ${select}
+        <input type="text" class="custom-command-input" id="custom-${id}" 
+            placeholder="自定义指令" value="${customVal}" style="display:${customShow}">
+    </div>
+    <div class="form-group" id="params-group-${id}" style="display:none">
+        <label>参数</label>
+        <div id="friendly-${id}" class="friendly-container"></div>
+        <div id="advanced-${id}" class="advanced-params-container"></div>
+        <div id="mode-toggle-${id}"></div>
+        <div id="adv-controls-${id}" class="advanced-controls">
+            <select id="param-type-${id}" onchange="changeParamType('${id}',this.value)">
+                <option value="simple">简单值</option>
+                <option value="object">对象</option>
+            </select>
+            <button class="btn-add-param" onclick="addParam('${id}')">添加参数</button>
+        </div>
+    </div>`;
+
+    list.appendChild(item);
+    if (call && !presetCommands.some(x=>x.value==call)) {
+        document.getElementById(`cmd-${id}`).value = 'custom';
+    }
+    initStepParams(id, call, params);
+}
+
+function initStepParams(id, call, params) {
+    const cmd = call || document.getElementById(`cmd-${id}`).value;
+    const group = document.getElementById(`params-group-${id}`);
+    if (!cmd) {
+        group.style.display = 'none';
+        return;
+    }
+    group.style.display = 'block';
+
+    if (friendlyFormConfigs[cmd]) {
+        const vals = friendlyFormConfigs[cmd].parseParams(params);
+        renderFriendly(id, cmd, vals);
+        document.getElementById(`mode-toggle-${id}`).innerHTML = 
+            `<button class="btn-toggle-mode" onclick="toggleMode('${id}',true)">高级模式</button>`;
+    } else {
+        document.getElementById(`adv-controls-${id}`).style.display = 'block';
+        document.getElementById(`advanced-${id}`).style.display = 'block';
+        renderAdvanced(id, params);
+    }
+}
+
+function onCmdChange(id, cmd) {
+    const custom = document.getElementById(`custom-${id}`);
+    const group = document.getElementById(`params-group-${id}`);
+    const friendly = document.getElementById(`friendly-${id}`);
+    const advanced = document.getElementById(`advanced-${id}`);
+    const advCtrl = document.getElementById(`adv-controls-${id}`);
+    const modeToggle = document.getElementById(`mode-toggle-${id}`);
+
+    if (!cmd) {
+        custom.style.display = 'none';
+        group.style.display = 'none';
+        friendly.innerHTML = '';
+        advanced.innerHTML = '';
+        advCtrl.style.display = 'none';
+        modeToggle.innerHTML = '';
+        return;
+    }
+
+    group.style.display = 'block';
+    custom.style.display = cmd === 'custom' ? 'block' : 'none';
+    friendly.innerHTML = '';
+    advanced.innerHTML = '';
+    advCtrl.style.display = 'none';
+    modeToggle.innerHTML = '';
+
+    if (friendlyFormConfigs[cmd]) {
+        renderFriendly(id, cmd);
+        modeToggle.innerHTML = `<button class="btn-toggle-mode" onclick="toggleMode('${id}',true)">高级模式</button>`;
+    } else {
+        advCtrl.style.display = 'block';
+        advanced.style.display = 'block';
+        changeParamType(id, 'simple');
+    }
+}
+
+function toggleMode(id, toAdv) {
+    const friendly = document.getElementById(`friendly-${id}`);
+    const advanced = document.getElementById(`advanced-${id}`);
+    const advCtrl = document.getElementById(`adv-controls-${id}`);
+    const toggle = document.getElementById(`mode-toggle-${id}`);
+    const cmd = document.getElementById(`cmd-${id}`).value;
+    const cfg = friendlyFormConfigs[cmd];
+
+    if (toAdv) {
+        friendly.style.display = 'none';
+        advanced.style.display = 'block';
+        advCtrl.style.display = 'block';
+        toggle.innerHTML = `<button class="btn-toggle-mode" onclick="toggleMode('${id}',false)">简单模式</button>`;
+        if (cfg) {
+            const vals = getFriendlyValues(id, cmd);
+            renderAdvanced(id, cfg.getParams(vals));
+        }
+    } else {
+        advanced.style.display = 'none';
+        advCtrl.style.display = 'none';
+        friendly.style.display = 'block';
+        toggle.innerHTML = `<button class="btn-toggle-mode" onclick="toggleMode('${id}',true)">高级模式</button>`;
+        if (cfg) {
+            const p = getAdvancedParams(id);
+            renderFriendly(id, cmd, cfg.parseParams(p));
+        }
+    }
+}
+
+function renderFriendly(id, cmd, init={}) {
+    const cfg = friendlyFormConfigs[cmd];
+    if (!cfg) return;
+    const box = document.getElementById(`friendly-${id}`);
+    box.innerHTML = '';
+    const form = document.createElement('div');
+    form.className = 'friendly-form';
+    form.id = `ff-${id}`;
+
+    cfg.fields.forEach(f => {
+        const val = init[f.key] ?? f.default ?? '';
+        const fid = `ff-${id}-${f.key}`;
+        let html = `<div class="form-group"><label>${f.label}</label>`;
+        if (f.type === 'textarea') {
+            html += `<textarea id="${fid}" data-key="${f.key}">${val}</textarea>`;
+        } else if (f.type === 'checkbox') {
+            html += `<input type="checkbox" id="${fid}" data-key="${f.key}" ${val?'checked':''}>`;
+        } else {
+            html += `<input type="text" id="${fid}" data-key="${f.key}" value="${val}">`;
+        }
+        html += `</div>`;
+        form.innerHTML += html;
+    });
+    box.appendChild(form);
+}
+
+function renderAdvanced(id, params) {
+    const box = document.getElementById(`advanced-${id}`);
+    box.innerHTML = '';
+    if (typeof params === 'object' && params !== null && !Array.isArray(params)) {
+        document.getElementById(`param-type-${id}`).value = 'object';
+        Object.entries(params).forEach(([k, v]) => addAdvParam(id, k, v));
+    } else {
+        document.getElementById(`param-type-${id}`).value = 'simple';
+        box.innerHTML = `<input type="text" class="param-simple" value="${params||''}">`;
+    }
+}
+
+function getFriendlyValues(id, cmd) {
+    const cfg = friendlyFormConfigs[cmd];
+    if (!cfg) return {};
+    const vals = {};
+    cfg.fields.forEach(f => {
+        const el = document.getElementById(`ff-${id}-${f.key}`);
+        if (el) vals[f.key] = f.type === 'checkbox' ? el.checked : el.value;
+    });
+    return vals;
+}
+
+function getAdvancedParams(id) {
+    const t = document.getElementById(`param-type-${id}`).value;
+    const box = document.getElementById(`advanced-${id}`);
+    if (t === 'simple') {
+        const i = box.querySelector('.param-simple');
+        return i ? parse(i.value) : '';
+    } else {
+        const o = {};
+        box.querySelectorAll('.param-item').forEach(p => {
+            const k = p.querySelector('.param-key')?.value;
+            const v = p.querySelector('.param-value')?.value;
+            if (k) o[k] = parse(v||'');
+        });
+        return o;
+    }
+}
+
+function addParam(id) {
+    const t = document.getElementById(`param-type-${id}`).value;
+    const box = document.getElementById(`advanced-${id}`);
+    if (t === 'simple') box.innerHTML = `<input type="text" class="param-simple">`;
+    else addAdvParam(id, '', '');
+}
+function addAdvParam(id, k, v) {
+    const box = document.getElementById(`advanced-${id}`);
+    const pid = `p-${id}-${box.children.length}`;
+    const div = document.createElement('div');
+    div.className = 'param-item';
+    div.id = pid;
+    div.innerHTML = `
+        <input class="param-key" value="${k}" placeholder="键">
+        <input class="param-value" value="${v}" placeholder="值">
+        <button class="btn-remove-param" onclick="delParam('${pid}')">删</button>`;
+    box.appendChild(div);
+}
+function changeParamType(id, t) {
+    document.getElementById(`advanced-${id}`).innerHTML = '';
+    addParam(id);
+}
+function delParam(id) { document.getElementById(id)?.remove(); }
+
+function moveUp(id) {
+    const el = document.getElementById(id);
+    const prev = el.previousElementSibling;
+    if (prev) el.parentElement.insertBefore(el, prev);
+    renumber();
+}
+function moveDown(id) {
+    const el = document.getElementById(id);
+    const next = el.nextElementSibling;
+    if (next) el.parentElement.insertBefore(next, el);
+    renumber();
+}
+function renumber() {
+    document.querySelectorAll('.step-item').forEach((s,i)=>{
+        s.querySelector('.step-title').textContent = `步骤 ${i+1}`;
+    });
+}
+function delStep(id) {
+    document.getElementById(id)?.remove();
+    renumber();
+}
+
+function parse(v) {
+    if (v === '') return '';
+    if (!isNaN(Number(v))) return Number(v);
+    if (v.toLowerCase() === 'true') return true;
+    if (v.toLowerCase() === 'false') return false;
+    try { return JSON.parse(v); } catch {}
+    return v;
+}
+
+// JSON
+function generateJSON() {
+    try {
+        const obj = {
+            description: document.getElementById('description').value,
+            steps: []
+        };
+        document.querySelectorAll('.step-item').forEach(s => {
+            const id = s.id;
+            let cmd = document.getElementById(`cmd-${id}`).value;
+            if (cmd === 'custom') cmd = document.getElementById(`custom-${id}`).value.trim();
+            if (!cmd) return;
+
+            const isAdv = document.getElementById(`adv-controls-${id}`).style.display === 'block';
+            const p = isAdv ? getAdvancedParams(id) : 
+                (friendlyFormConfigs[cmd]?.getParams(getFriendlyValues(id, cmd)) || '');
+            obj.steps.push({ call: cmd, params: p });
+        });
+        document.getElementById('json-output').value = JSON.stringify(obj, null, 2);
+        addLog('info', 'JSON 已生成');
+    } catch (e) {
+        addLog('error', '生成失败：' + e.message);
+    }
+}
+
+function downloadJSON() {
+    const c = document.getElementById('json-output').value.trim();
+    if (!c) { addLog('error','无内容'); return; }
+    let name = (document.getElementById('description').value || 'script').replace(/[\\/:*?"<>|]/g,'_') + '.json';
+    if (document.getElementById('is-mp3').checked) name += '.mp3';
+    const blob = new Blob([c], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    addLog('success', '已下载：' + name);
+}
+
+function loadSampleData() {
+    document.getElementById('steps-list').innerHTML = '';
+    stepCounter = 0;
+    document.getElementById('description').value = '测试示例';
+    const steps = [
+        { call: 'console.log', params: '开始测试' },
+        { call: 'file.mkdir', params: { uri: 'internal://test', recursive: true } },
+        { call: 'file.writeText', params: { uri: 'internal://test/hello.txt', text: 'test', append: false } }
+    ];
+    steps.forEach(s => addStep(s.call, s.params));
+    generateJSON();
+    addLog('success', '示例已加载');
+}
+
+// ======================
+// 纯本地测试运行（核心）
+// ======================
+function startTestRun() {
+    if (isRunning) return;
+    const json = document.getElementById('json-output').value.trim();
+    if (!json) { addLog('error','先生成JSON'); return; }
+
+    try {
+        const data = JSON.parse(json);
+        if (!data.steps || !data.steps.length) {
+            addLog('error','没有步骤');
+            return;
+        }
+        isRunning = true;
+        currentStep = 0;
+        scriptSteps = data.steps;
+        document.getElementById('btn-run').style.display = 'none';
+        document.getElementById('btn-stop').style.display = 'block';
+        addLog('info', `开始测试运行：${data.description || '脚本'}`);
+        runNextTestStep();
+    } catch (e) {
+        addLog('error','解析失败：' + e.message);
+    }
+}
+
+function stopTestRun() {
+    if (runTimer) clearTimeout(runTimer);
+    isRunning = false;
+    document.getElementById('btn-run').style.display = 'block';
+    document.getElementById('btn-stop').style.display = 'none';
+    addLog('info', '测试已停止');
+}
+
+function runNextTestStep() {
+    if (!isRunning || currentStep >= scriptSteps.length) {
+        stopTestRun();
+        addLog('success', '测试运行完成！');
+        return;
+    }
+
+    const step = scriptSteps[currentStep];
+    const idx = currentStep + 1;
+    addLog('info', `测试步骤 ${idx}/${scriptSteps.length}：${step.call}`);
+
+    // 纯本地模拟执行
+    testRunCommand(step.call, step.params);
+
+    addLog('success', `步骤 ${idx} 模拟执行完成`);
+    currentStep++;
+    runTimer = setTimeout(runNextTestStep, 700);
+}
+
+function testRunCommand(cmd, params) {
+    // 只在浏览器里模拟打印，不调用任何设备
+    switch (cmd) {
+        case 'console.log':
+            addLog('info', `模拟输出：${params}`);
+            break;
+        case 'file.mkdir':
+            addLog('info', `模拟创建目录：${params?.uri}`);
+            break;
+        case 'file.writeText':
+            addLog('info', `模拟写入文件：${params?.uri}`);
+            break;
+        case 'file.writeArrayBuffer':
+            addLog('info', `模拟写入二进制：${params?.uri}`);
+            break;
+        case 'file.copy':
+            addLog('info', `模拟复制：${params?.srcUri} → ${params?.dstUri}`);
+            break;
+        case 'file.move':
+            addLog('info', `模拟移动：${params?.srcUri} → ${params?.dstUri}`);
+            break;
+        case 'file.delete':
+            addLog('info', `模拟删除：${params?.uri}`);
+            break;
+        case 'file.rmdir':
+            addLog('info', `模拟删除目录：${params?.uri}`);
+            break;
+        default:
+            addLog('info', `模拟自定义指令：${cmd}，参数：${JSON.stringify(params)}`);
+    }
+}
+
+window.onload = () => {
+    addStep();
+    addLog('info', '编辑器已就绪（本地测试版）');
+};
+</script>
+</body>
+</html>
